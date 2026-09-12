@@ -7,6 +7,7 @@ val usuariosRegistrados: Array<Usuario?> = arrayOfNulls(5)
 
 var cantidadUsuariosRegistrados = 0
 
+// Registra un usuario dentro del array
 fun registrarUsuario(usuario: Usuario): Boolean {
 
     if (cantidadUsuariosRegistrados >= usuariosRegistrados.size) {
@@ -19,30 +20,64 @@ fun registrarUsuario(usuario: Usuario): Boolean {
     return true
 }
 
-fun correoYaRegistrado(correo: String): Boolean {
+// Convierte los elementos no nulos del Array en una List
+fun obtenerUsuariosRegistrados(): List<Usuario> {
 
     return usuariosRegistrados
         .filterNotNull()
-        .any {
-            it.correo.equals(
+}
+
+// Verifica si el correo ya existe
+fun correoYaRegistrado(correo: String): Boolean {
+
+    return obtenerUsuariosRegistrados()
+        .any { usuario ->
+
+            usuario.correo.equals(
                 correo,
                 ignoreCase = true
             )
         }
 }
 
+// Busca y devuelve un usuario según su correo
+fun buscarUsuarioPorCorreo(
+    correo: String
+): Usuario? {
+
+    return obtenerUsuariosRegistrados()
+        .firstOrNull { usuario ->
+
+            usuario.correo.equals(
+                correo,
+                ignoreCase = true
+            )
+        }
+}
+
+// Valida correo y contraseña para el Login
 fun validarCredenciales(
     correo: String,
     password: String
 ): Boolean {
 
-    return usuariosRegistrados
-        .filterNotNull()
-        .any {
-            it.correo.equals(
+    return obtenerUsuariosRegistrados()
+        .any { usuario ->
+
+            usuario.correo.equals(
                 correo,
                 ignoreCase = true
             ) &&
-                    it.password == password
+                    usuario.password == password
+        }
+}
+
+// Obtiene solamente los correos registrados
+fun obtenerCorreosRegistrados(): List<String> {
+
+    return obtenerUsuariosRegistrados()
+        .map { usuario ->
+
+            usuario.correo
         }
 }

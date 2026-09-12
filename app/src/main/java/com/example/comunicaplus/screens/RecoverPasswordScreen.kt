@@ -10,7 +10,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.comunicaplus.data.correoYaRegistrado
+import com.example.comunicaplus.data.buscarUsuarioPorCorreo
 
 @Composable
 fun RecoverPasswordScreen(
@@ -113,16 +113,25 @@ fun RecoverPasswordScreen(
                                 "Ingresa un correo electrónico válido."
                         }
 
-                        !correoYaRegistrado(correo) -> {
-
-                            mensajeError =
-                                "No existe una cuenta asociada a este correo."
-                        }
-
                         else -> {
 
-                            mensajeExito =
-                                "✓ Solicitud procesada correctamente."
+                            val usuarioEncontrado =
+                                buscarUsuarioPorCorreo(correo)
+
+                            if (usuarioEncontrado != null) {
+
+                                mensajeError = ""
+
+                                mensajeExito =
+                                    "✓ Se encontró la cuenta asociada a ${usuarioEncontrado.correo}."
+
+                            } else {
+
+                                mensajeExito = ""
+
+                                mensajeError =
+                                    "No existe una cuenta asociada a este correo."
+                            }
                         }
                     }
                 },
