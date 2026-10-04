@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.comunicaplus.data.FirebaseDataService
 
 @Composable
 fun WriteMessageScreen(
@@ -28,6 +29,15 @@ fun WriteMessageScreen(
     var mensajeError by remember {
         mutableStateOf("")
     }
+
+    var mensajeExito by remember {
+        mutableStateOf("")
+    }
+
+    var guardando by remember {
+        mutableStateOf(false)
+    }
+
 
     // =====================================================
     // MODO MOSTRAR MENSAJE EN GRANDE
@@ -78,6 +88,7 @@ fun WriteMessageScreen(
         return
     }
 
+
     // =====================================================
     // MODO ESCRIBIR
     // =====================================================
@@ -101,7 +112,8 @@ fun WriteMessageScreen(
             )
 
             TextButton(
-                onClick = onVolver
+                onClick = onVolver,
+                enabled = !guardando
             ) {
 
                 Text(
@@ -138,22 +150,26 @@ fun WriteMessageScreen(
 
                     mensaje = it
                     mensajeError = ""
+                    mensajeExito = ""
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 180.dp),
                 label = {
+
                     Text(
                         text = "Escribe tu mensaje"
                     )
                 },
                 placeholder = {
+
                     Text(
                         text = "Ejemplo: Necesito ayuda, por favor."
                     )
                 },
                 minLines = 6,
-                maxLines = 10
+                maxLines = 10,
+                enabled = !guardando
             )
 
             Spacer(
@@ -169,8 +185,16 @@ fun WriteMessageScreen(
                 modifier = Modifier.height(24.dp)
             )
 
+
+            // =================================================
+            // GUARDAR EN FIRESTORE Y MOSTRAR EN GRANDE
+            // =================================================
+
             Button(
                 onClick = {
+
+                    mensajeError = ""
+                    mensajeExito = ""
 
                     if (mensaje.isBlank()) {
 
@@ -179,39 +203,82 @@ fun WriteMessageScreen(
 
                     } else {
 
-                        mensajeError = ""
-                        mostrarGrande = true
+                        guardando = true
+
+                        FirebaseDataService.guardarMensaje(
+                            texto = mensaje,
+
+                            onSuccess = {
+
+                                guardando = false
+
+                                mensajeExito =
+                                    "✓ Mensaje guardado correctamente."
+
+                                mostrarGrande = true
+                            },
+
+                            onError = { error ->
+
+                                guardando = false
+
+                                mensajeError = error
+                            }
+                        )
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(56.dp),
+                enabled = !guardando
             ) {
 
-                Text(
-                    text = "MOSTRAR EN GRANDE"
-                )
+                if (guardando) {
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+
+                } else {
+
+                    Text(
+                        text = "MOSTRAR EN GRANDE"
+                    )
+                }
             }
 
             Spacer(
                 modifier = Modifier.height(12.dp)
             )
 
+
+            // =================================================
+            // LIMPIAR
+            // =================================================
+
             OutlinedButton(
                 onClick = {
 
                     mensaje = ""
                     mensajeError = ""
+                    mensajeExito = ""
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp)
+                    .height(54.dp),
+                enabled = !guardando
             ) {
 
                 Text(
                     text = "LIMPIAR MENSAJE"
                 )
             }
+
+
+            // =================================================
+            // ERROR
+            // =================================================
 
             if (mensajeError.isNotEmpty()) {
 
@@ -221,7 +288,25 @@ fun WriteMessageScreen(
 
                 Text(
                     text = mensajeError,
-                    color = MaterialTheme.colorScheme.error
+                    color =
+                        MaterialTheme.colorScheme.error
+                )
+            }
+
+
+            // =================================================
+            // ÉXITO
+            // =================================================
+
+            if (mensajeExito.isNotEmpty()) {
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
+
+                Text(
+                    text = mensajeExito,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 

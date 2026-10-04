@@ -1,5 +1,6 @@
 package com.example.comunicaplus.screens
 
+import android.util.Patterns
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -11,7 +12,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.comunicaplus.data.validarCredenciales
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.FirebaseTooManyRequestsException
 
 @Composable
 fun LoginScreen(
@@ -34,6 +39,14 @@ fun LoginScreen(
 
     var mensajeError by remember {
         mutableStateOf("")
+    }
+
+    var cargando by remember {
+        mutableStateOf(false)
+    }
+
+    val auth = remember {
+        FirebaseAuth.getInstance()
     }
 
     Scaffold(
@@ -82,7 +95,8 @@ fun LoginScreen(
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !cargando
             )
 
             Spacer(
@@ -100,11 +114,13 @@ fun LoginScreen(
                 label = {
                     Text("Contraseña")
                 },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation =
+                    PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !cargando
             )
 
             Spacer(
@@ -114,14 +130,16 @@ fun LoginScreen(
             // RECORDAR SESIÓN
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 Checkbox(
                     checked = recordarSesion,
                     onCheckedChange = {
                         recordarSesion = it
-                    }
+                    },
+                    enabled = !cargando
                 )
 
                 Text(
@@ -135,8 +153,10 @@ fun LoginScreen(
 
             // RECUPERAR CONTRASEÑA
             TextButton(
-                onClick = onRecuperarPassword
+                onClick = onRecuperarPassword,
+                enabled = !cargando
             ) {
+
                 Text(
                     text = "¿Olvidaste tu contraseña?"
                 )
@@ -150,16 +170,23 @@ fun LoginScreen(
             Button(
                 onClick = {
 
+                    mensajeError = ""
+
+                    val correoLimpio =
+                        correo.trim()
+
                     when {
 
-                        correo.isBlank() || password.isBlank() -> {
+                        correoLimpio.isBlank() ||
+                                password.isBlank() -> {
 
                             mensajeError =
                                 "Debes ingresar correo y contraseña."
                         }
 
-                        !correo.contains("@") ||
-                                !correo.contains(".") -> {
+                        !Patterns.EMAIL_ADDRESS
+                            .matcher(correoLimpio)
+                            .matches() -> {
 
                             mensajeError =
                                 "Ingresa un correo electrónico válido."
@@ -167,33 +194,65 @@ fun LoginScreen(
 
                         else -> {
 
-                            val credencialesCorrectas =
-                                validarCredenciales(
-                                    correo = correo,
-                                    password = password
-                                )
+                            cargando = true
 
-                            if (credencialesCorrectas) {
+                            auth.signInWithEmailAndPassword(
+                                correoLimpio,
+                                password
+                            ).addOnCompleteListener { task ->
 
-                                mensajeError = ""
-                                onLoginExitoso()
+                                cargando = false
 
-                            } else {
+                                if (task.isSuccessful) {
 
-                                mensajeError =
-                                    "Correo o contraseña incorrectos."
+                                    mensajeError = ""
+
+                                    onLoginExitoso()
+
+                                } else {
+
+                                    mensajeError =
+                                        when (task.exception) {
+
+                                            is FirebaseAuthInvalidCredentialsException ->
+                                                "Correo o contraseña incorrectos."
+
+                                            is FirebaseAuthInvalidUserException ->
+                                                "La cuenta no existe o está deshabilitada."
+
+                                            is FirebaseNetworkException ->
+                                                "No fue posible conectarse. Revisa tu conexión a internet."
+
+                                            is FirebaseTooManyRequestsException ->
+                                                "Demasiados intentos. Intenta nuevamente más tarde."
+
+                                            else ->
+                                                "No fue posible iniciar sesión. Verifica tus datos."
+                                        }
+                                }
                             }
                         }
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp)
+                    .height(54.dp),
+                enabled = !cargando
             ) {
 
-                Text(
-                    text = "INICIAR SESIÓN"
-                )
+                if (cargando) {
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+
+                } else {
+
+                    Text(
+                        text = "INICIAR SESIÓN"
+                    )
+                }
             }
 
             if (mensajeError.isNotEmpty()) {
@@ -204,7 +263,8 @@ fun LoginScreen(
 
                 Text(
                     text = mensajeError,
-                    color = MaterialTheme.colorScheme.error
+                    color =
+                        MaterialTheme.colorScheme.error
                 )
             }
 
@@ -217,7 +277,8 @@ fun LoginScreen(
             )
 
             TextButton(
-                onClick = onCrearCuenta
+                onClick = onCrearCuenta,
+                enabled = !cargando
             ) {
 
                 Text(

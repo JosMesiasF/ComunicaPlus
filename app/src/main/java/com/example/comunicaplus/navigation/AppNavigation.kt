@@ -4,29 +4,35 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.comunicaplus.data.FirebaseDataService
+import com.example.comunicaplus.screens.AccessibilitySettingsScreen
 import com.example.comunicaplus.screens.HomeScreen
 import com.example.comunicaplus.screens.LoginScreen
+import com.example.comunicaplus.screens.QuickPhrasesScreen
 import com.example.comunicaplus.screens.RecoverPasswordScreen
 import com.example.comunicaplus.screens.RegisterScreen
-import com.example.comunicaplus.screens.WriteMessageScreen
 import com.example.comunicaplus.screens.SpeechToTextScreen
-import com.example.comunicaplus.screens.QuickPhrasesScreen
-import com.example.comunicaplus.screens.AccessibilitySettingsScreen
+import com.example.comunicaplus.screens.WriteMessageScreen
 
 @Composable
 fun AppNavigation() {
 
-    val navController = rememberNavController()
+    val navController =
+        rememberNavController()
 
     NavHost(
         navController = navController,
         startDestination = "login"
     ) {
 
+        // =====================================================
         // LOGIN
+        // =====================================================
+
         composable("login") {
 
             LoginScreen(
+
                 onLoginExitoso = {
 
                     navController.navigate("home") {
@@ -38,19 +44,30 @@ fun AppNavigation() {
                 },
 
                 onCrearCuenta = {
-                    navController.navigate("registro")
+
+                    navController.navigate(
+                        "registro"
+                    )
                 },
 
                 onRecuperarPassword = {
-                    navController.navigate("recuperar")
+
+                    navController.navigate(
+                        "recuperar"
+                    )
                 }
             )
         }
 
+
+        // =====================================================
         // REGISTRO
+        // =====================================================
+
         composable("registro") {
 
             RegisterScreen(
+
                 onRegistroExitoso = {
 
                     navController.navigate("login") {
@@ -62,22 +79,33 @@ fun AppNavigation() {
                 },
 
                 onVolver = {
+
                     navController.popBackStack()
                 }
             )
         }
 
+
+        // =====================================================
         // RECUPERAR CONTRASEÑA
+        // =====================================================
+
         composable("recuperar") {
 
             RecoverPasswordScreen(
+
                 onVolver = {
+
                     navController.popBackStack()
                 }
             )
         }
 
+
+        // =====================================================
         // HOME
+        // =====================================================
+
         composable("home") {
 
             HomeScreen(
@@ -112,6 +140,10 @@ fun AppNavigation() {
 
                 onCerrarSesion = {
 
+                    // Cerrar realmente la sesión en Firebase
+                    FirebaseDataService.cerrarSesion()
+
+                    // Volver al Login
                     navController.navigate("login") {
 
                         popUpTo("home") {
@@ -122,7 +154,11 @@ fun AppNavigation() {
             )
         }
 
+
+        // =====================================================
         // ESCRIBIR MENSAJE
+        // =====================================================
+
         composable("escribir") {
 
             WriteMessageScreen(
@@ -134,7 +170,11 @@ fun AppNavigation() {
             )
         }
 
+
+        // =====================================================
         // VOZ A TEXTO
+        // =====================================================
+
         composable("vozTexto") {
 
             SpeechToTextScreen(
@@ -146,7 +186,11 @@ fun AppNavigation() {
             )
         }
 
+
+        // =====================================================
         // FRASES RÁPIDAS
+        // =====================================================
+
         composable("frases") {
 
             QuickPhrasesScreen(
@@ -158,17 +202,29 @@ fun AppNavigation() {
             )
         }
 
+
+        // =====================================================
         // PREFERENCIAS DE ACCESIBILIDAD
+        // =====================================================
+
         composable("preferencias") {
 
             AccessibilitySettingsScreen(
 
                 onVolver = {
-
                     navController.popBackStack()
+                },
+
+                onCuentaEliminada = {
+
+                    navController.navigate("login") {
+
+                        popUpTo("home") {
+                            inclusive = true
+                        }
+                    }
                 }
             )
         }
-
     }
 }

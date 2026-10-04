@@ -1,5 +1,6 @@
 package com.example.comunicaplus.screens
 
+import android.util.Patterns
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -10,7 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.comunicaplus.data.buscarUsuarioPorCorreo
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun RecoverPasswordScreen(
@@ -27,6 +28,14 @@ fun RecoverPasswordScreen(
 
     var mensajeExito by remember {
         mutableStateOf("")
+    }
+
+    var cargando by remember {
+        mutableStateOf(false)
+    }
+
+    val auth = remember {
+        FirebaseAuth.getInstance()
     }
 
     Scaffold(
@@ -61,7 +70,7 @@ fun RecoverPasswordScreen(
             )
 
             Text(
-                text = "Te mostraremos una confirmación para continuar con la recuperación.",
+                text = "Firebase enviará las instrucciones de recuperación a tu correo.",
                 fontSize = 14.sp
             )
 
@@ -73,7 +82,6 @@ fun RecoverPasswordScreen(
             OutlinedTextField(
                 value = correo,
                 onValueChange = {
-
                     correo = it
                     mensajeError = ""
                     mensajeExito = ""
@@ -85,7 +93,8 @@ fun RecoverPasswordScreen(
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !cargando
             )
 
             Spacer(
@@ -99,15 +108,20 @@ fun RecoverPasswordScreen(
                     mensajeError = ""
                     mensajeExito = ""
 
+                    val correoLimpio =
+                        correo.trim()
+
                     when {
 
-                        correo.isBlank() -> {
+                        correoLimpio.isBlank() -> {
 
                             mensajeError =
                                 "Debes ingresar tu correo electrónico."
                         }
 
-                        !correoValido(correo) -> {
+                        !Patterns.EMAIL_ADDRESS
+                            .matcher(correoLimpio)
+                            .matches() -> {
 
                             mensajeError =
                                 "Ingresa un correo electrónico válido."
@@ -115,34 +129,51 @@ fun RecoverPasswordScreen(
 
                         else -> {
 
-                            val usuarioEncontrado =
-                                buscarUsuarioPorCorreo(correo)
+                            cargando = true
 
-                            if (usuarioEncontrado != null) {
+                            auth.sendPasswordResetEmail(
+                                correoLimpio
+                            ).addOnCompleteListener { task ->
 
-                                mensajeError = ""
+                                cargando = false
 
-                                mensajeExito =
-                                    "✓ Se encontró la cuenta asociada a ${usuarioEncontrado.correo}."
+                                if (task.isSuccessful) {
 
-                            } else {
+                                    mensajeError = ""
 
-                                mensajeExito = ""
+                                    mensajeExito =
+                                        "✓ Solicitud enviada correctamente."
 
-                                mensajeError =
-                                    "No existe una cuenta asociada a este correo."
+                                } else {
+
+                                    mensajeExito = ""
+
+                                    mensajeError =
+                                        "No fue posible enviar el correo de recuperación. Verifica tu conexión e inténtalo nuevamente."
+                                }
                             }
                         }
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp)
+                    .height(54.dp),
+                enabled = !cargando
             ) {
 
-                Text(
-                    text = "RECUPERAR CONTRASEÑA"
-                )
+                if (cargando) {
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+
+                } else {
+
+                    Text(
+                        text = "RECUPERAR CONTRASEÑA"
+                    )
+                }
             }
 
             // ERROR
@@ -175,7 +206,7 @@ fun RecoverPasswordScreen(
                 )
 
                 Text(
-                    text = "Las instrucciones de recuperación serían enviadas al correo registrado.",
+                    text = "Revisa tu bandeja de entrada y también la carpeta de spam.",
                     fontSize = 14.sp
                 )
             }
@@ -185,7 +216,8 @@ fun RecoverPasswordScreen(
             )
 
             TextButton(
-                onClick = onVolver
+                onClick = onVolver,
+                enabled = !cargando
             ) {
 
                 Text(

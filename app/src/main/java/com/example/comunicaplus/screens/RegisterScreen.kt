@@ -13,10 +13,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.comunicaplus.data.cantidadUsuariosRegistrados
-import com.example.comunicaplus.data.correoYaRegistrado
-import com.example.comunicaplus.data.registrarUsuario
-import com.example.comunicaplus.model.Usuario
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun RegisterScreen(
@@ -60,6 +60,20 @@ fun RegisterScreen(
         mutableStateOf("")
     }
 
+    var cargando by remember {
+        mutableStateOf(false)
+    }
+
+    // Firebase Authentication
+    val auth = remember {
+        FirebaseAuth.getInstance()
+    }
+
+    // Cloud Firestore
+    val db = remember {
+        FirebaseFirestore.getInstance()
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
@@ -98,7 +112,7 @@ fun RegisterScreen(
             )
 
             Text(
-                text = "Usuarios registrados: $cantidadUsuariosRegistrados / 5",
+                text = "Registro conectado con Firebase",
                 fontWeight = FontWeight.SemiBold
             )
 
@@ -110,7 +124,6 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = nombre,
                 onValueChange = {
-
                     nombre = it
                     mensajeError = ""
                     mensajeExito = ""
@@ -119,7 +132,8 @@ fun RegisterScreen(
                 label = {
                     Text("Nombre completo")
                 },
-                singleLine = true
+                singleLine = true,
+                enabled = !cargando
             )
 
             Spacer(
@@ -130,7 +144,6 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = correo,
                 onValueChange = {
-
                     correo = it
                     mensajeError = ""
                     mensajeExito = ""
@@ -142,7 +155,8 @@ fun RegisterScreen(
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !cargando
             )
 
             Spacer(
@@ -153,7 +167,6 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = {
-
                     password = it
                     mensajeError = ""
                     mensajeExito = ""
@@ -172,7 +185,8 @@ fun RegisterScreen(
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !cargando
             )
 
             Spacer(
@@ -198,7 +212,8 @@ fun RegisterScreen(
                     onClick = {
                         menuEdadAbierto = true
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !cargando
                 ) {
 
                     Text(
@@ -227,7 +242,6 @@ fun RegisterScreen(
                                 Text(edad)
                             },
                             onClick = {
-
                                 rangoEdad = edad
                                 menuEdadAbierto = false
                                 mensajeError = ""
@@ -258,7 +272,8 @@ fun RegisterScreen(
                     tipoComunicacion == "Texto",
                 onSeleccionar = {
                     tipoComunicacion = "Texto"
-                }
+                },
+                habilitado = !cargando
             )
 
             OpcionComunicacion(
@@ -267,7 +282,8 @@ fun RegisterScreen(
                     tipoComunicacion == "Voz a texto",
                 onSeleccionar = {
                     tipoComunicacion = "Voz a texto"
-                }
+                },
+                habilitado = !cargando
             )
 
             OpcionComunicacion(
@@ -276,7 +292,8 @@ fun RegisterScreen(
                     tipoComunicacion == "Frases rápidas",
                 onSeleccionar = {
                     tipoComunicacion = "Frases rápidas"
-                }
+                },
+                habilitado = !cargando
             )
 
             Spacer(
@@ -293,10 +310,10 @@ fun RegisterScreen(
                 Checkbox(
                     checked = aceptaTerminos,
                     onCheckedChange = {
-
                         aceptaTerminos = it
                         mensajeError = ""
-                    }
+                    },
+                    enabled = !cargando
                 )
 
                 Text(
@@ -312,6 +329,7 @@ fun RegisterScreen(
             Button(
                 onClick = {
 
+                    mensajeError = ""
                     mensajeExito = ""
 
                     when {
@@ -328,12 +346,6 @@ fun RegisterScreen(
 
                             mensajeError =
                                 "Ingresa un correo electrónico válido."
-                        }
-
-                        correoYaRegistrado(correo) -> {
-
-                            mensajeError =
-                                "El correo electrónico ya está registrado."
                         }
 
                         !passwordValida(password) -> {
@@ -355,53 +367,129 @@ fun RegisterScreen(
                                 "Debes aceptar los términos y condiciones."
                         }
 
-                        cantidadUsuariosRegistrados >= 5 -> {
-
-                            mensajeError =
-                                "Se alcanzó el máximo de 5 usuarios."
-                        }
-
                         else -> {
 
-                            val nuevoUsuario = Usuario(
-                                id =
-                                    cantidadUsuariosRegistrados + 1,
-                                nombre = nombre.trim(),
-                                correo = correo.trim(),
-                                password = password,
-                                rangoEdad = rangoEdad,
-                                tipoComunicacion =
-                                    tipoComunicacion
-                            )
+                            cargando = true
 
-                            val registrado =
-                                registrarUsuario(
-                                    nuevoUsuario
-                                )
+                            val correoLimpio =
+                                correo.trim()
 
-                            if (registrado) {
+                            // =========================================
+                            // 1. CREAR USUARIO EN FIREBASE AUTH
+                            // =========================================
+                            auth.createUserWithEmailAndPassword(
+                                correoLimpio,
+                                password
+                            ).addOnCompleteListener { task ->
 
-                                mensajeError = ""
+                                if (task.isSuccessful) {
 
-                                mensajeExito =
-                                    "✓ Usuario registrado correctamente."
+                                    val usuarioFirebase =
+                                        auth.currentUser
 
-                            } else {
+                                    val uid =
+                                        usuarioFirebase?.uid
 
-                                mensajeError =
-                                    "No fue posible registrar el usuario."
+                                    if (uid == null) {
+
+                                        cargando = false
+
+                                        mensajeError =
+                                            "No fue posible obtener el identificador del usuario."
+
+                                        return@addOnCompleteListener
+                                    }
+
+                                    // =========================================
+                                    // 2. DATOS DEL PERFIL PARA FIRESTORE
+                                    // =========================================
+                                    val datosUsuario =
+                                        hashMapOf<String, Any>(
+                                            "uid" to uid,
+                                            "nombre" to nombre.trim(),
+                                            "correo" to correoLimpio,
+                                            "rangoEdad" to rangoEdad,
+                                            "tipoComunicacion" to tipoComunicacion,
+                                            "activo" to true,
+                                            "creadoEn" to FieldValue.serverTimestamp()
+                                        )
+
+                                    // =========================================
+                                    // 3. GUARDAR PERFIL EN FIRESTORE
+                                    // usuarios/{uid}
+                                    // =========================================
+                                    db.collection("usuarios")
+                                        .document(uid)
+                                        .set(datosUsuario)
+                                        .addOnSuccessListener {
+
+                                            cargando = false
+                                            mensajeError = ""
+
+                                            mensajeExito =
+                                                "✓ Usuario registrado correctamente en Firebase."
+
+                                            // Cerramos la sesión para que el
+                                            // usuario ingrese desde Login.
+                                            auth.signOut()
+                                        }
+                                        .addOnFailureListener {
+
+                                            // Si Firestore falla, eliminamos
+                                            // la cuenta recién creada para
+                                            // evitar un usuario incompleto.
+                                            usuarioFirebase
+                                                .delete()
+                                                .addOnCompleteListener {
+
+                                                    auth.signOut()
+                                                    cargando = false
+
+                                                    mensajeError =
+                                                        "No fue posible guardar el perfil del usuario."
+                                                }
+                                        }
+
+                                } else {
+
+                                    cargando = false
+
+                                    val excepcion =
+                                        task.exception
+
+                                    mensajeError =
+                                        when (excepcion) {
+
+                                            is FirebaseAuthUserCollisionException ->
+                                                "El correo electrónico ya está registrado."
+
+                                            else ->
+                                                "No fue posible registrar el usuario. Verifica los datos e inténtalo nuevamente."
+                                        }
+                                }
                             }
                         }
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp)
+                    .height(54.dp),
+                enabled = !cargando
             ) {
 
-                Text(
-                    text = "CREAR CUENTA"
-                )
+                if (cargando) {
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+
+                } else {
+
+                    Text(
+                        text = "CREAR CUENTA"
+                    )
+                }
             }
 
             // ERROR
@@ -450,7 +538,8 @@ fun RegisterScreen(
             )
 
             TextButton(
-                onClick = onVolver
+                onClick = onVolver,
+                enabled = !cargando
             ) {
 
                 Text(
@@ -474,7 +563,8 @@ fun RegisterScreen(
 fun OpcionComunicacion(
     texto: String,
     seleccionado: Boolean,
-    onSeleccionar: () -> Unit
+    onSeleccionar: () -> Unit,
+    habilitado: Boolean = true
 ) {
 
     Row(
@@ -485,7 +575,8 @@ fun OpcionComunicacion(
 
         RadioButton(
             selected = seleccionado,
-            onClick = onSeleccionar
+            onClick = onSeleccionar,
+            enabled = habilitado
         )
 
         Text(

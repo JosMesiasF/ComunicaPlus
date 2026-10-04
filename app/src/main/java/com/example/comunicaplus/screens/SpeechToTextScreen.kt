@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.comunicaplus.data.FirebaseDataService
 
 @Composable
 fun SpeechToTextScreen(
@@ -30,9 +31,22 @@ fun SpeechToTextScreen(
         mutableStateOf("")
     }
 
+    var mensajeExito by remember {
+        mutableStateOf("")
+    }
+
     var mostrarGrande by remember {
         mutableStateOf(false)
     }
+
+    var guardando by remember {
+        mutableStateOf(false)
+    }
+
+
+    // =====================================================
+    // RECONOCIMIENTO DE VOZ
+    // =====================================================
 
     val speechLauncher =
         rememberLauncherForActivityResult(
@@ -54,16 +68,50 @@ fun SpeechToTextScreen(
                         resultados[0]
 
                     mensajeError = ""
+                    mensajeExito = ""
+
+                    guardando = true
+
+                    // =========================================
+                    // GUARDAR TRANSCRIPCIÓN EN FIRESTORE
+                    // =========================================
+                    FirebaseDataService.guardarTranscripcion(
+                        texto = textoReconocido,
+
+                        onSuccess = {
+
+                            guardando = false
+
+                            mensajeExito =
+                                "✓ Transcripción guardada correctamente."
+                        },
+
+                        onError = { error ->
+
+                            guardando = false
+
+                            mensajeError = error
+                        }
+                    )
 
                 } else {
 
                     mensajeError =
                         "No fue posible reconocer el mensaje."
                 }
+
+            } else {
+
+                mensajeError =
+                    "El reconocimiento de voz fue cancelado."
             }
         }
 
+
+    // =====================================================
     // MOSTRAR TEXTO EN GRANDE
+    // =====================================================
+
     if (mostrarGrande) {
 
         Scaffold(
@@ -111,7 +159,11 @@ fun SpeechToTextScreen(
         return
     }
 
+
+    // =====================================================
     // VOZ A TEXTO
+    // =====================================================
+
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
@@ -136,7 +188,8 @@ fun SpeechToTextScreen(
                 onClick = onVolver,
                 modifier = Modifier.align(
                     Alignment.Start
-                )
+                ),
+                enabled = !guardando
             ) {
 
                 Text(
@@ -178,10 +231,16 @@ fun SpeechToTextScreen(
                 modifier = Modifier.height(20.dp)
             )
 
+
+            // =================================================
+            // BOTÓN RECONOCIMIENTO
+            // =================================================
+
             Button(
                 onClick = {
 
                     mensajeError = ""
+                    mensajeExito = ""
 
                     try {
 
@@ -221,17 +280,33 @@ fun SpeechToTextScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp)
+                    .height(58.dp),
+                enabled = !guardando
             ) {
 
-                Text(
-                    text = "INICIAR RECONOCIMIENTO"
-                )
+                if (guardando) {
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+
+                } else {
+
+                    Text(
+                        text = "INICIAR RECONOCIMIENTO"
+                    )
+                }
             }
 
             Spacer(
                 modifier = Modifier.height(30.dp)
             )
+
+
+            // =================================================
+            // TEXTO RECONOCIDO
+            // =================================================
 
             if (textoReconocido.isNotEmpty()) {
 
@@ -270,7 +345,8 @@ fun SpeechToTextScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp)
+                        .height(54.dp),
+                    enabled = !guardando
                 ) {
 
                     Text(
@@ -287,10 +363,12 @@ fun SpeechToTextScreen(
 
                         textoReconocido = ""
                         mensajeError = ""
+                        mensajeExito = ""
 
                     },
                     modifier =
-                        Modifier.fillMaxWidth()
+                        Modifier.fillMaxWidth(),
+                    enabled = !guardando
                 ) {
 
                     Text(
@@ -298,6 +376,28 @@ fun SpeechToTextScreen(
                     )
                 }
             }
+
+
+            // =================================================
+            // MENSAJE DE ÉXITO
+            // =================================================
+
+            if (mensajeExito.isNotEmpty()) {
+
+                Spacer(
+                    modifier = Modifier.height(16.dp)
+                )
+
+                Text(
+                    text = mensajeExito,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+
+            // =================================================
+            // MENSAJE DE ERROR
+            // =================================================
 
             if (mensajeError.isNotEmpty()) {
 
