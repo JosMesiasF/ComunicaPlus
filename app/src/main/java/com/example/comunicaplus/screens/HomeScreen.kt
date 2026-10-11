@@ -2,12 +2,14 @@ package com.example.comunicaplus.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun HomeScreen(
@@ -15,8 +17,57 @@ fun HomeScreen(
     onVozATexto: () -> Unit,
     onFrasesRapidas: () -> Unit,
     onPreferencias: () -> Unit,
-    onCerrarSesion: () -> Unit
+    onCerrarSesion: () -> Unit,
+    onAyuda: () -> Unit = {}
 ) {
+
+    var nombreUsuario by remember {
+        mutableStateOf("")
+    }
+
+    var cargandoNombre by remember {
+        mutableStateOf(true)
+    }
+
+    val auth = remember {
+        FirebaseAuth.getInstance()
+    }
+
+    val db = remember {
+        FirebaseFirestore.getInstance()
+    }
+
+    // =====================================================
+    // OBTENER NOMBRE DEL USUARIO DESDE FIRESTORE
+    // =====================================================
+
+    LaunchedEffect(Unit) {
+
+        val uid = auth.currentUser?.uid
+
+        if (uid != null) {
+
+            db.collection("usuarios")
+                .document(uid)
+                .get()
+                .addOnSuccessListener { documento ->
+
+                    nombreUsuario =
+                        documento.getString("nombre")
+                            ?: ""
+
+                    cargandoNombre = false
+                }
+                .addOnFailureListener {
+
+                    cargandoNombre = false
+                }
+
+        } else {
+
+            cargandoNombre = false
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize()
@@ -38,6 +89,35 @@ fun HomeScreen(
             )
 
             Spacer(
+                modifier = Modifier.height(12.dp)
+            )
+
+            // =====================================================
+            // SALUDO PERSONALIZADO
+            // =====================================================
+
+            if (cargandoNombre) {
+
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+
+            } else {
+
+                Text(
+                    text =
+                        if (nombreUsuario.isNotBlank()) {
+                            "Hola, $nombreUsuario 👋"
+                        } else {
+                            "Hola 👋"
+                        },
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(
                 modifier = Modifier.height(8.dp)
             )
 
@@ -47,7 +127,7 @@ fun HomeScreen(
             )
 
             Spacer(
-                modifier = Modifier.height(32.dp)
+                modifier = Modifier.height(28.dp)
             )
 
             Button(
@@ -56,6 +136,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
+
                 Text(
                     text = "ESCRIBIR MENSAJE"
                 )
@@ -71,6 +152,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
+
                 Text(
                     text = "VOZ A TEXTO"
                 )
@@ -86,6 +168,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
+
                 Text(
                     text = "FRASES RÁPIDAS"
                 )
@@ -101,18 +184,40 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
+
                 Text(
                     text = "PREFERENCIAS DE ACCESIBILIDAD"
                 )
             }
 
             Spacer(
-                modifier = Modifier.height(32.dp)
+                modifier = Modifier.height(14.dp)
+            )
+
+            // =====================================================
+            // AYUDA / TUTORIAL
+            // =====================================================
+
+            OutlinedButton(
+                onClick = onAyuda,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+
+                Text(
+                    text = "AYUDA / TUTORIAL"
+                )
+            }
+
+            Spacer(
+                modifier = Modifier.height(28.dp)
             )
 
             TextButton(
                 onClick = onCerrarSesion
             ) {
+
                 Text(
                     text = "Cerrar sesión"
                 )

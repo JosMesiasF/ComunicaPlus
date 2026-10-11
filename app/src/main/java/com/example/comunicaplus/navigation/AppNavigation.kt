@@ -12,6 +12,7 @@ import com.example.comunicaplus.screens.QuickPhrasesScreen
 import com.example.comunicaplus.screens.RecoverPasswordScreen
 import com.example.comunicaplus.screens.RegisterScreen
 import com.example.comunicaplus.screens.SpeechToTextScreen
+import com.example.comunicaplus.screens.TutorialScreen
 import com.example.comunicaplus.screens.WriteMessageScreen
 
 @Composable
@@ -140,16 +141,21 @@ fun AppNavigation() {
 
                 onCerrarSesion = {
 
-                    // Cerrar realmente la sesión en Firebase
                     FirebaseDataService.cerrarSesion()
 
-                    // Volver al Login
                     navController.navigate("login") {
 
                         popUpTo("home") {
                             inclusive = true
                         }
                     }
+                },
+
+                onAyuda = {
+
+                    navController.navigate(
+                        "tutorial"
+                    )
                 }
             )
         }
@@ -212,6 +218,7 @@ fun AppNavigation() {
             AccessibilitySettingsScreen(
 
                 onVolver = {
+
                     navController.popBackStack()
                 },
 
@@ -223,6 +230,22 @@ fun AppNavigation() {
                             inclusive = true
                         }
                     }
+                }
+            )
+        }
+
+
+        // =====================================================
+        // AYUDA / TUTORIAL
+        // =====================================================
+
+        composable("tutorial") {
+
+            TutorialScreen(
+
+                onVolver = {
+
+                    navController.popBackStack()
                 }
             )
         }
